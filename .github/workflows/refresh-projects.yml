@@ -22,10 +22,10 @@ jobs:
 
     steps:
       - name: Check out atlas
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check out upstream data
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: 1c7/chinese-independent-developer
           ref: master
@@ -33,7 +33,7 @@ jobs:
           fetch-depth: 1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 22.13.0
           cache: npm

@@ -192,7 +192,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
       <section className="intro-band" aria-labelledby="page-title">
         <div className="intro-copy">
           <p className="eyebrow">中国独立开发者项目目录</p>
-          <h1 id="page-title">从 {snapshot.meta.total.toLocaleString("zh-CN")} 个项目里，找到值得研究的方向</h1>
+          <h1 id="page-title">Vibe Coding Atlas</h1>
           <p>完整收录主版面、程序员、游戏和历史归档项目，提供分类、收录日期和公开 GitHub Stars 供检索与比较。</p>
         </div>
         <dl className="metrics" aria-label="项目概况">

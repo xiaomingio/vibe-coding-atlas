@@ -33,4 +33,4 @@ GitHub Actions 每周一 10:15（北京时间）检查
 
 ## 部署
 
-Cloudflare Pages 项目 `vibe-coding-atlas-web` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`。GitHub 不保存 Cloudflare API Token 或 Account ID。
+Cloudflare Pages 项目 `vibe-coding-atlas` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`。GitHub 不保存 Cloudflare API Token 或 Account ID。

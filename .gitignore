@@ -1,0 +1,13 @@
+# 文件说明: 忽略本地依赖、构建产物、缓存和私密环境配置。
+
+/node_modules/
+/dist/
+/.wrangler/
+/.vite/
+/.vinext/
+*.tsbuildinfo
+.DS_Store
+.env
+.env.*
+!.env.example
+npm-debug.log*

@@ -1,0 +1,79 @@
+# 文件说明: 每周同步上游项目清单，重新生成静态数据并提交有变化的快照。
+# 参考资料: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#schedule
+
+name: Refresh project data
+
+on:
+  schedule:
+    - cron: "15 2 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-project-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out atlas
+        uses: actions/checkout@v4
+
+      - name: Check out upstream data
+        uses: actions/checkout@v4
+        with:
+          repository: 1c7/chinese-independent-developer
+          ref: master
+          path: source
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check upstream revision
+        id: upstream
+        shell: bash
+        run: |
+          current_commit="$(node -e "const fs = require('node:fs'); const data = JSON.parse(fs.readFileSync('app/data/projects.json', 'utf8')); process.stdout.write(data.meta.sourceCommit);")"
+          upstream_commit="$(git -C source rev-parse HEAD)"
+          if [[ "$current_commit" == "$upstream_commit" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate project snapshot
+        if: steps.upstream.outputs.changed == 'true'
+        env:
+          SOURCE_REPO: ${{ github.workspace }}/source
+        run: npm run data:generate
+
+      - name: Verify site
+        run: |
+          npm run typecheck
+          npm run lint
+          npm test
+
+      - name: Commit refreshed data
+        if: steps.upstream.outputs.changed == 'true'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/data/projects.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore: refresh project data"
+          git push

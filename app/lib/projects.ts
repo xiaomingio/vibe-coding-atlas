@@ -17,8 +17,9 @@ export type Project = {
   category: string;
   sourceFile: string;
   sourceLine: number;
-  rating: number;
-  reason: string;
+  githubRepository: string | null;
+  githubUrl: string | null;
+  githubStars: number | null;
 };
 
 export type ProjectSnapshot = {
@@ -26,6 +27,9 @@ export type ProjectSnapshot = {
     source: string;
     sourceCommit: string;
     generatedAt: string;
+    githubStarsFetchedAt: string | null;
+    githubRepositoriesDetected: number;
+    githubRepositoriesResolved: number;
     total: number;
   };
   projects: Project[];

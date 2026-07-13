@@ -5,8 +5,9 @@
 "use client";
 
 import {
-  ArrowDownAZ,
+  ArrowDown,
   ArrowUpRight,
+  ArrowUp,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -15,16 +16,30 @@ import {
   ExternalLink,
   FilterX,
   Search,
-  Sparkles,
   Star,
 } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 import type { Project, ProjectSnapshot } from "../lib/projects";
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 100;
 const sourceBase = "https://github.com/1c7/chinese-independent-developer/blob/master";
 
-type SortKey = "rating" | "recent" | "name";
+type SortKey = "name" | "category" | "github-stars" | "status" | "added-at" | "board";
+type SortDirection = "ascending" | "descending";
+type SortState = { key: SortKey; direction: SortDirection };
+
+const sortLabels: Record<SortKey, string> = {
+  name: "项目名称",
+  category: "分类",
+  "github-stars": "GitHub Stars",
+  status: "状态",
+  "added-at": "收录日期",
+  board: "版面",
+};
+
+function defaultSortDirection(key: SortKey): SortDirection {
+  return key === "github-stars" || key === "added-at" ? "descending" : "ascending";
+}
 
 function statusClass(status: Project["status"]) {
   return status === "已上线" ? "status-live" : status === "开发中" ? "status-building" : "status-closed";
@@ -34,13 +49,56 @@ function safeProjectUrl(url: string) {
   return /^https?:\/\//i.test(url) ? url : null;
 }
 
-function Rating({ value }: { value: number }) {
+function addedAtSortValue(project: Project) {
+  const date = project.addedAt.match(/^(\d{4})(?:-(\d{2}))?(?:-(\d{2}))?$/);
+  if (date) return `${date[1]}-${date[2] ?? "00"}-${date[3] ?? "00"}`;
+  return project.year ? `${project.year}-00-00` : "";
+}
+
+function compareProjects(left: Project, right: Project, sort: SortState) {
+  const multiplier = sort.direction === "ascending" ? 1 : -1;
+  let result = 0;
+
+  if (sort.key === "github-stars") {
+    if (left.githubStars === null) return right.githubStars === null ? 0 : 1;
+    if (right.githubStars === null) return -1;
+    result = left.githubStars - right.githubStars;
+  } else if (sort.key === "added-at") {
+    result = addedAtSortValue(left).localeCompare(addedAtSortValue(right));
+  } else {
+    const leftValue = sort.key === "name" ? left.name : left[sort.key];
+    const rightValue = sort.key === "name" ? right.name : right[sort.key];
+    result = leftValue.localeCompare(rightValue, "zh-CN");
+  }
+
+  return result * multiplier
+    || addedAtSortValue(right).localeCompare(addedAtSortValue(left))
+    || left.name.localeCompare(right.name, "zh-CN");
+}
+
+function SortableHeader({ children, column, sort, onSort }: { children: string; column: SortKey; sort: SortState; onSort: (key: SortKey) => void }) {
+  const active = sort.key === column;
+  const nextDirection = active
+    ? sort.direction === "ascending" ? "降序" : "升序"
+    : defaultSortDirection(column) === "ascending" ? "升序" : "降序";
   return (
-    <span className="rating" aria-label={`${value} 星`} title={`${value} 星`}>
-      <Star size={15} aria-hidden="true" fill="currentColor" />
-      <span>{value.toFixed(1)}</span>
-    </span>
+    <th className="sortable-heading" aria-sort={active ? sort.direction : "none"}>
+      <button type="button" onClick={() => onSort(column)} title={`按${children}${nextDirection}排列`}>
+        <span>{children}</span>
+        <span className="sort-arrow" aria-hidden="true">
+          {active && (sort.direction === "ascending" ? <ArrowUp size={13} /> : <ArrowDown size={13} />)}
+        </span>
+      </button>
+    </th>
   );
+}
+
+function formatAddedAt(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year) return "—";
+  if (!month) return `${year} 年`;
+  if (!day) return `${year} 年 ${month} 月`;
+  return `${year} 年 ${month} 月 ${day} 日`;
 }
 
 export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
@@ -49,8 +107,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
   const [status, setStatus] = useState("全部状态");
   const [board, setBoard] = useState("全部版面");
   const [year, setYear] = useState("全部年份");
-  const [rating, setRating] = useState("全部星级");
-  const [sort, setSort] = useState<SortKey>("rating");
+  const [sort, setSort] = useState<SortState>({ key: "github-stars", direction: "descending" });
   const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase("zh-CN"));
 
@@ -68,7 +125,6 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
   );
 
   const filtered = useMemo(() => {
-    const minimumRating = rating === "5 星" ? 5 : rating === "4.5 星以上" ? 4.5 : rating === "4 星以上" ? 4 : 0;
     const result = snapshot.projects.filter((project) => {
       const searchText = `${project.name} ${project.description} ${project.author}`.toLocaleLowerCase("zh-CN");
       return (
@@ -76,24 +132,19 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         (category === "全部分类" || project.category === category) &&
         (status === "全部状态" || project.status === status) &&
         (board === "全部版面" || project.board === board) &&
-        (year === "全部年份" || project.year === Number(year)) &&
-        project.rating >= minimumRating
+        (year === "全部年份" || project.year === Number(year))
       );
     });
 
-    return result.sort((left, right) => {
-      if (sort === "name") return left.name.localeCompare(right.name, "zh-CN");
-      if (sort === "recent") return (right.year ?? 0) - (left.year ?? 0) || right.sourceLine - left.sourceLine;
-      return right.rating - left.rating || (right.year ?? 0) - (left.year ?? 0) || left.name.localeCompare(right.name, "zh-CN");
-    });
-  }, [board, category, deferredQuery, rating, snapshot.projects, sort, status, year]);
+    return result.sort((left, right) => compareProjects(left, right, sort));
+  }, [board, category, deferredQuery, snapshot.projects, sort, status, year]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
   const visible = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const start = filtered.length ? (currentPage - 1) * PAGE_SIZE + 1 : 0;
   const end = Math.min(currentPage * PAGE_SIZE, filtered.length);
-  const recommendedCount = snapshot.projects.filter((project) => project.rating >= 4.5).length;
+  const githubProjectCount = snapshot.projects.filter((project) => project.githubUrl).length;
   const liveCount = snapshot.projects.filter((project) => project.status === "已上线").length;
 
   function updateFilter(setter: (value: string) => void, value: string) {
@@ -107,8 +158,22 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
     setStatus("全部状态");
     setBoard("全部版面");
     setYear("全部年份");
-    setRating("全部星级");
-    setSort("rating");
+    setSort({ key: "github-stars", direction: "descending" });
+    setPage(1);
+  }
+
+  function updateSort(key: SortKey) {
+    setSort((current) => ({
+      key,
+      direction: current.key === key
+        ? current.direction === "ascending" ? "descending" : "ascending"
+        : defaultSortDirection(key),
+    }));
+    setPage(1);
+  }
+
+  function selectSort(key: SortKey) {
+    setSort({ key, direction: defaultSortDirection(key) });
     setPage(1);
   }
 
@@ -128,12 +193,12 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         <div className="intro-copy">
           <p className="eyebrow">中国独立开发者项目目录</p>
           <h1 id="page-title">从 {snapshot.meta.total.toLocaleString("zh-CN")} 个项目里，找到值得研究的方向</h1>
-          <p>完整收录主版面、程序员、游戏和历史归档项目。分类与星级用于快速初筛，重要判断请回到项目原站复核。</p>
+          <p>完整收录主版面、程序员、游戏和历史归档项目，提供分类、收录日期和公开 GitHub Stars 供检索与比较。</p>
         </div>
         <dl className="metrics" aria-label="项目概况">
           <div><dt>全部项目</dt><dd>{snapshot.meta.total.toLocaleString("zh-CN")}</dd></div>
           <div><dt>已上线</dt><dd>{liveCount.toLocaleString("zh-CN")}</dd></div>
-          <div><dt>4.5 星以上</dt><dd>{recommendedCount.toLocaleString("zh-CN")}</dd></div>
+          <div><dt>GitHub 仓库</dt><dd>{githubProjectCount.toLocaleString("zh-CN")}</dd></div>
           <div><dt>粗分类</dt><dd>{categories.length}</dd></div>
         </dl>
       </section>
@@ -142,7 +207,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         <div className="directory-heading">
           <div>
             <h2 id="directory-title">项目目录</h2>
-            <p>默认按推荐度排序。星级综合定位清晰度、工作流完整性、差异化与持续性粗评，不代表营收或投资建议。</p>
+            <p>默认按 GitHub Stars 从高到低排序。Stars 为数据快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
           </div>
           <span className="snapshot-note">数据快照 · {snapshot.meta.sourceCommit.slice(0, 7)}</span>
         </div>
@@ -160,11 +225,10 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
           </label>
           <div className="select-grid">
             <label><span>分类</span><select value={category} onChange={(event) => updateFilter(setCategory, event.target.value)}><option>全部分类</option>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label><span>星级</span><select value={rating} onChange={(event) => updateFilter(setRating, event.target.value)}><option>全部星级</option><option>4 星以上</option><option>4.5 星以上</option><option>5 星</option></select></label>
             <label><span>状态</span><select value={status} onChange={(event) => updateFilter(setStatus, event.target.value)}><option>全部状态</option><option>已上线</option><option>开发中</option><option>已关闭</option></select></label>
             <label><span>年份</span><select value={year} onChange={(event) => updateFilter(setYear, event.target.value)}><option>全部年份</option>{years.map((item) => <option key={item}>{item}</option>)}</select></label>
             <label><span>版面</span><select value={board} onChange={(event) => updateFilter(setBoard, event.target.value)}><option>全部版面</option>{boards.map((item) => <option key={item}>{item}</option>)}</select></label>
-            <label><span>排序</span><select value={sort} onChange={(event) => { setSort(event.target.value as SortKey); setPage(1); }}><option value="rating">推荐度优先</option><option value="recent">最新收录</option><option value="name">名称 A–Z</option></select></label>
+            <label><span>排序</span><select value={sort.key} onChange={(event) => selectSort(event.target.value as SortKey)}><option value="github-stars">GitHub Stars</option><option value="added-at">收录日期</option><option value="name">项目名称</option><option value="category">分类</option><option value="status">状态</option><option value="board">版面</option></select></label>
           </div>
           <button className="reset-button" type="button" onClick={resetFilters} title="清除筛选">
             <FilterX size={17} aria-hidden="true" />
@@ -174,33 +238,43 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
 
         <div className="result-summary" aria-live="polite">
           <span>找到 <strong>{filtered.length.toLocaleString("zh-CN")}</strong> 个项目</span>
-          <span className="sort-indicator"><ArrowDownAZ size={15} aria-hidden="true" /> {sort === "rating" ? "推荐度优先" : sort === "recent" ? "最新收录" : "名称排序"}</span>
+          <span className="sort-indicator">
+            {sort.direction === "ascending" ? <ArrowUp size={15} aria-hidden="true" /> : <ArrowDown size={15} aria-hidden="true" />}
+            {sortLabels[sort.key]}{sort.direction === "ascending" ? "升序" : "降序"}
+          </span>
         </div>
 
         <div className="table-frame">
           {visible.length ? (
             <table>
-              <thead><tr><th>项目</th><th>分类</th><th>星级</th><th>状态</th><th>年份</th><th>版面</th><th><span className="sr-only">操作</span></th></tr></thead>
+              <thead><tr><th>序号</th><SortableHeader column="name" sort={sort} onSort={updateSort}>项目</SortableHeader><SortableHeader column="category" sort={sort} onSort={updateSort}>分类</SortableHeader><SortableHeader column="github-stars" sort={sort} onSort={updateSort}>GitHub Stars</SortableHeader><SortableHeader column="status" sort={sort} onSort={updateSort}>状态</SortableHeader><SortableHeader column="added-at" sort={sort} onSort={updateSort}>收录日期</SortableHeader><SortableHeader column="board" sort={sort} onSort={updateSort}>版面</SortableHeader><th><span className="sr-only">操作</span></th></tr></thead>
               <tbody>
-                {visible.map((project) => {
+                {visible.map((project, index) => {
                   const projectUrl = safeProjectUrl(project.url);
                   const sourceUrl = `${sourceBase}/${project.sourceFile}#L${project.sourceLine}`;
                   return (
-                    <tr key={project.id} className={project.rating >= 4.5 ? "recommended-row" : undefined}>
-                      <td data-label="项目">
+                    <tr key={project.id}>
+                      <td className="sequence-cell" data-label="序号">{start + index}</td>
+                      <td className="project-column" data-label="项目">
                         <div className="project-cell">
                           <div className="project-title-line">
-                            {project.rating >= 4.5 && <Sparkles size={15} aria-label="重点推荐" className="recommended-icon" />}
                             {projectUrl ? <a href={projectUrl} target="_blank" rel="noreferrer">{project.name}</a> : <strong>{project.name}</strong>}
                           </div>
                           <p>{project.description}</p>
-                          <span className="project-meta">{project.author} · {project.reason}</span>
+                          <span className="project-meta">{project.author}</span>
                         </div>
                       </td>
                       <td data-label="分类"><span className="category-label">{project.category}</span></td>
-                      <td data-label="星级"><Rating value={project.rating} /></td>
+                      <td data-label="GitHub Stars">
+                        {project.githubUrl ? (
+                          <a className="github-stars" href={project.githubUrl} target="_blank" rel="noreferrer" title={`查看 ${project.githubRepository} 仓库`}>
+                            <Star size={15} aria-hidden="true" fill="currentColor" />
+                            <span>{project.githubStars?.toLocaleString("zh-CN") ?? "—"}</span>
+                          </a>
+                        ) : "—"}
+                      </td>
                       <td data-label="状态"><span className={`status ${statusClass(project.status)}`}>{project.status}</span></td>
-                      <td data-label="年份">{project.year ?? "—"}</td>
+                      <td data-label="收录日期">{formatAddedAt(project.addedAt)}</td>
                       <td data-label="版面">{project.board}</td>
                       <td data-label="操作">
                         <div className="row-actions">
@@ -237,7 +311,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
       </section>
 
       <footer>
-        <p>项目事实来自 chinese-independent-developer 仓库；分类、推荐理由和星级为辅助判断，建议结合原站、用户反馈与商业数据复核。</p>
+        <p>项目资料来自 chinese-independent-developer 仓库；GitHub Stars 来自项目附带的公开仓库链接，数据以快照生成时间为准。</p>
       </footer>
     </main>
   );

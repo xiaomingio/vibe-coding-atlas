@@ -41,21 +41,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check upstream revision
-        id: upstream
-        shell: bash
-        run: |
-          current_commit="$(node -e "const fs = require('node:fs'); const data = JSON.parse(fs.readFileSync('app/data/projects.json', 'utf8')); process.stdout.write(data.meta.sourceCommit);")"
-          upstream_commit="$(git -C source rev-parse HEAD)"
-          if [[ "$current_commit" == "$upstream_commit" ]]; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Generate project snapshot
-        if: steps.upstream.outputs.changed == 'true'
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           SOURCE_REPO: ${{ github.workspace }}/source
         run: npm run data:generate
 
@@ -66,7 +54,6 @@ jobs:
           npm test
 
       - name: Commit refreshed data
-        if: steps.upstream.outputs.changed == 'true'
         shell: bash
         run: |
           git config user.name "github-actions[bot]"

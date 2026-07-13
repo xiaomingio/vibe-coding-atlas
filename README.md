@@ -1,6 +1,6 @@
 # Vibe Coding Atlas
 
-把 [chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的项目清单整理成可搜索、筛选、排序的静态网页目录，并提供粗分类、星级和推荐理由用于快速初筛。
+把 [chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的项目清单整理成可搜索、筛选、排序的静态网页目录，并展示精确收录日期和项目所附公开仓库的 GitHub Stars。
 
 正式站点：<https://vibecoding.aicake.io>
 
@@ -12,7 +12,7 @@ npm run data:generate
 npm run dev
 ```
 
-默认从相邻的 `../third_party/chinese-independent-developer` 读取数据，也可以通过 `SOURCE_REPO` 指定仓库路径。
+默认从相邻的 `../third_party/chinese-independent-developer` 读取数据，也可以通过 `SOURCE_REPO` 指定仓库路径。设置 `GITHUB_TOKEN` 或 `GH_TOKEN` 后会通过 GitHub 官方 API 刷新 Stars；没有 Token 时保留已有 Stars 快照。
 
 ## 验证与构建
 
@@ -22,12 +22,12 @@ npm run lint
 npm test
 ```
 
-`npm run build` 生成可直接发布到 Cloudflare Pages 的 `dist/`。项目事实来自上游仓库快照；分类、推荐理由和星级属于启发式判断，不代表营收、用户规模或投资建议。
+`npm run build` 生成可直接发布到 Cloudflare Pages 的 `dist/`。项目资料来自上游仓库，GitHub Stars 仅对应清单中能够识别出的公开仓库链接。
 
 ## 自动更新
 
 GitHub Actions 每周一 10:15（北京时间）检查
-[chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支。上游 commit 发生变化时，工作流会重新生成并验证 `app/data/projects.json`，然后把新快照提交到 `main`。Cloudflare Pages 通过 GitHub Integration 检测该提交并自动构建发布。
+[chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支，重新生成项目资料并刷新 GitHub Stars。快照有变化时提交到 `main`，Cloudflare Pages 通过 GitHub Integration 检测提交并自动构建发布。
 
 工作流也可以在 GitHub Actions 页面手动触发；它只使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要在 GitHub 配置 Cloudflare 凭据。
 

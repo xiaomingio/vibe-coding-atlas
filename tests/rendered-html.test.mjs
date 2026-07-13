@@ -15,7 +15,11 @@ test("项目快照包含全部版面和必要展示字段", async () => {
   assert.equal(snapshot.meta.total, snapshot.projects.length);
   assert.ok(snapshot.projects.length >= 2400);
   assert.deepEqual([...boards].sort(), ["主版面", "历史归档", "游戏", "程序员"].sort());
-  assert.ok(snapshot.projects.every((project) => project.name && project.category && project.rating >= 1 && project.rating <= 5));
+  assert.ok(snapshot.projects.every((project) => project.name && project.category && project.addedAt));
+  assert.ok(snapshot.projects.every((project) => !("rating" in project) && !("reason" in project)));
+  assert.ok(snapshot.projects.some((project) => project.githubUrl && Number.isInteger(project.githubStars)));
+  assert.ok(snapshot.projects.every((project) => project.githubStars === null || project.githubStars >= 0));
+  assert.ok(snapshot.projects.every((project) => !project.githubUrl?.includes("/user-attachments/")));
 });
 
 test("生产构建包含可直接托管的静态首页和资源", async () => {

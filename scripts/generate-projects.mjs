@@ -1,5 +1,5 @@
 /**
- * 文件说明: 从 chinese-independent-developer 的 Markdown 清单生成网页使用的项目快照。
+ * 文件说明: 从 chinese-independent-developer 的 Markdown 清单生成项目快照，并补充公开 GitHub Stars。
  * 参考资料: https://github.com/1c7/chinese-independent-developer
  */
 
@@ -13,6 +13,8 @@ const sourceRoot = process.env.SOURCE_REPO
   ? resolve(process.env.SOURCE_REPO)
   : resolve(projectRoot, "../third_party/chinese-independent-developer");
 const outputPath = resolve(projectRoot, "app/data/projects.json");
+const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+const githubSourceRepository = "1c7/chinese-independent-developer";
 
 const boards = [
   { file: "README.md", name: "主版面" },
@@ -26,31 +28,6 @@ const statusNames = {
   clock8: "开发中",
   x: "已关闭",
 };
-
-const featured = new Map(
-  [
-    ["listlift", 5, "垂直用户明确，价值可直接关联销售转化"],
-    ["signalto", 5, "高价值工作流，可靠性和审计能力可持续收费"],
-    ["apkgo", 5, "解决多应用商店分发的重复刚需"],
-    ["pake", 5, "定位单一清晰，并已获得广泛开发者采用"],
-    ["siyuan", 5, "本地优先与开源生态结合，商业路径成熟"],
-    ["pyvideotrans", 5, "覆盖视频翻译完整链路，社区采用度高"],
-    ["hertzbeat", 5, "开源产品与云服务结合，企业价值清晰"],
-    ["audiencecue", 4.5, "从免费工具延伸到可复核的受众洞察"],
-    ["upload", 4.5, "切中跨 AI 记忆迁移的新需求"],
-    ["璞奇", 4.5, "从内容消费进入练习和反馈闭环"],
-    ["loomet", 4.5, "小众需求具体，工作流和导出能力完整"],
-    ["agents sandbox", 4.5, "Agent 安全隔离是明确的基础设施需求"],
-    ["dory", 4.5, "面向真实数据工作流，替代对象明确"],
-    ["markstream-vue", 4.5, "解决 AI 流式渲染的新基础问题"],
-    ["versionfox", 4.5, "跨语言 SDK 管理需求稳定且已有采用度"],
-    ["markra", 4.5, "本地优先、跨平台并支持可控 AI 修改"],
-    ["omnireach", 4.5, "多平台信息读取形成 Agent 数据入口"],
-    ["reloop", 4.5, "把真实内容导入语言学习闭环"],
-    ["timedsubs", 4, "本地处理与专业校验结合，定位清楚"],
-    ["xtimer", 4, "远程计时场景具体，适合活动和课堂复用"],
-  ].map(([name, rating, reason]) => [String(name).toLowerCase(), { rating, reason }]),
-);
 
 function plainText(value) {
   return value
@@ -82,51 +59,114 @@ function classify(name, description, board) {
   return "其他";
 }
 
-function rate(project) {
-  const key = project.name.toLowerCase();
-  const manual = featured.get(key);
-  if (manual) return manual;
-  if (project.status === "已关闭") return { rating: 1, reason: "项目已关闭，仅适合作为历史样本" };
+function githubRepositoryFromUrl(value) {
+  try {
+    const url = new URL(value);
+    if (!/^(?:www\.)?github\.com$/i.test(url.hostname)) return null;
+    const [owner, rawName] = url.pathname.split("/").filter(Boolean);
+    const reservedOwners = new Set(["apps", "collections", "codespaces", "enterprise", "explore", "features", "join", "login", "marketplace", "new", "notifications", "orgs", "organizations", "pricing", "search", "settings", "sponsors", "topics", "user-attachments", "users"]);
+    const name = rawName?.replace(/\.git$/i, "");
+    if (!owner || !name || reservedOwners.has(owner.toLowerCase())) return null;
+    if (!/^[\w.-]+$/.test(owner) || !/^[\w.-]+$/.test(name)) return null;
+    if (`${owner}/${name}`.toLowerCase() === githubSourceRepository.toLowerCase()) return null;
+    return {
+      key: `${owner}/${name}`.toLowerCase(),
+      nameWithOwner: `${owner}/${name}`,
+      owner,
+      name,
+      url: `https://github.com/${owner}/${name}`,
+    };
+  } catch {
+    return null;
+  }
+}
 
-  const text = `${project.name} ${project.description}`.toLowerCase();
-  let score = project.status === "已上线" ? 2.75 : 2.25;
-  const signals = [];
+function findGithubRepository(value) {
+  for (const match of value.matchAll(/https?:\/\/[^\s)]+/gi)) {
+    const repository = githubRepositoryFromUrl(match[0]);
+    if (repository) return repository;
+  }
+  return null;
+}
 
-  if (project.description.length >= 38) score += 0.25;
-  if (/\d+[+%]|\d+\s*(个|种|国|语言|平台|格式|城市|倍|秒)/i.test(text)) score += 0.25;
-  if (/导出|批量|自动发布|自动重试|审计|工作流|同步|协作|分析报告|管理|监控|提醒|回测|部署/i.test(text)) {
-    score += 0.5;
-    signals.push("工作流较完整");
+async function readExistingGithubData() {
+  try {
+    const existing = JSON.parse(await readFile(outputPath, "utf8"));
+    const repositories = new Map();
+    for (const project of existing.projects ?? []) {
+      if (project.githubRepository && Number.isInteger(project.githubStars)) {
+        repositories.set(project.githubRepository.toLowerCase(), {
+          nameWithOwner: project.githubRepository,
+          stars: project.githubStars,
+          url: project.githubUrl,
+        });
+      }
+    }
+    return {
+      fetchedAt: existing.meta?.githubStarsFetchedAt ?? null,
+      repositories,
+    };
+  } catch {
+    return { fetchedAt: null, repositories: new Map() };
   }
-  if (/本地处理|本地优先|无需上传|端到端加密|开源|self-host|自托管/i.test(text)) {
-    score += 0.25;
-    signals.push("信任基础较好");
-  }
-  if (/面向|专为|etsy|tradingview|字幕|证件照|串珠|应用商店|课堂|雅思|联合国|简历|房贷|量化/i.test(text)) {
-    score += 0.5;
-    signals.push("目标用户明确");
-  }
-  if (/一站式 ai|ai (图片|视频|音乐)?生成|提示词生成器|模型在线体验|网址导航|工具导航|账号.*中转|api 中转/i.test(text)) score -= 0.5;
-  if (/去水印|答案站|粉丝版本|游戏攻略|账号租|账号及 api|破解|激活服务/i.test(text)) score -= 0.5;
-  if (project.year && project.year <= 2024 && project.status === "已上线") {
-    score += 0.25;
-    signals.push("上线时间较长");
+}
+
+async function fetchGithubData(repositories) {
+  const fetched = new Map();
+  const batchSize = 50;
+
+  for (let offset = 0; offset < repositories.length; offset += batchSize) {
+    const batch = repositories.slice(offset, offset + batchSize);
+    const fields = batch.map((repository, index) =>
+      `repo${index}: repository(owner: ${JSON.stringify(repository.owner)}, name: ${JSON.stringify(repository.name)}) { isPrivate nameWithOwner stargazerCount url }`,
+    ).join("\n");
+    const query = `query ProjectRepositories {\n${fields}\n}`;
+    let payload;
+    let lastError;
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      try {
+        const response = await fetch("https://api.github.com/graphql", {
+          method: "POST",
+          headers: {
+            accept: "application/vnd.github+json",
+            authorization: `Bearer ${githubToken}`,
+            "content-type": "application/json",
+            "user-agent": "vibe-coding-atlas-data-generator",
+          },
+          body: JSON.stringify({ query }),
+        });
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        payload = await response.json();
+        break;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 3) await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt * 500));
+      }
+    }
+    if (!payload) throw new Error(`GitHub API 请求失败：${lastError?.message ?? "未知错误"}`);
+    if (!payload.data) {
+      const message = payload.errors?.map((error) => error.message).join("；") || "未返回数据";
+      throw new Error(`GitHub API 请求失败：${message}`);
+    }
+    batch.forEach((repository, index) => {
+      const result = payload.data[`repo${index}`];
+      if (!result || result.isPrivate) return;
+      fetched.set(repository.key, {
+        nameWithOwner: result.nameWithOwner,
+        stars: result.stargazerCount,
+        url: result.url,
+      });
+    });
   }
 
-  const rating = Math.max(1, Math.min(5, Math.round(score * 2) / 2));
-  const reason = signals.length
-    ? signals.slice(0, 2).join("，")
-    : rating >= 3.5
-      ? "解决具体问题，具备进一步验证价值"
-      : "方向较常见，差异化和持续性仍需验证";
-  return { rating, reason };
+  return { fetchedAt: new Date().toISOString(), repositories: fetched };
 }
 
 function parseProjectLine(body) {
   const link = body.match(/\[([^\]]+)\]\(([^)]+)\)/);
   if (!link) {
     const [name, ...rest] = body.split(/[：:]/);
-    return { name: plainText(name), url: "", description: plainText(rest.join("：")) };
+    return { name: plainText(name), url: "", description: plainText(rest.join("：")), githubRepository: findGithubRepository(body) };
   }
   const tail = body.slice((link.index ?? 0) + link[0].length);
   const description = tail
@@ -137,6 +177,7 @@ function parseProjectLine(body) {
     name: plainText(link[1]),
     url: link[2].trim(),
     description: plainText(description),
+    githubRepository: findGithubRepository(body),
   };
 }
 
@@ -145,6 +186,7 @@ async function parseBoard(board) {
   const lines = markdown.split(/\r?\n/);
   const projects = [];
   let author = "未注明";
+  let authorGithubRepository = null;
   let year = null;
   let addedAt = "未注明";
 
@@ -157,6 +199,7 @@ async function parseBoard(board) {
     }
     if (/^####\s+/.test(line)) {
       author = plainText(line.replace(/^####\s+/, "").replace(/\s+-\s+.*$/, "")) || "未注明";
+      authorGithubRepository = findGithubRepository(line);
       return;
     }
     const entry = line.match(/^\*\s+:([a-z0-9_]+):\s+(.*)$/i);
@@ -176,15 +219,34 @@ async function parseBoard(board) {
       category: classify(parsed.name, parsed.description, board.name),
       sourceFile: board.file,
       sourceLine: index + 1,
+      githubRepository: parsed.githubRepository ?? authorGithubRepository,
     };
-    Object.assign(project, rate(project));
     projects.push(project);
   });
 
   return projects;
 }
 
-const projects = (await Promise.all(boards.map(parseBoard))).flat();
+const parsedProjects = (await Promise.all(boards.map(parseBoard))).flat();
+const detectedRepositories = [...new Map(
+  parsedProjects
+    .filter((project) => project.githubRepository)
+    .map((project) => [project.githubRepository.key, project.githubRepository]),
+).values()];
+const githubData = githubToken
+  ? await fetchGithubData(detectedRepositories)
+  : await readExistingGithubData();
+if (!githubToken) console.warn("未提供 GITHUB_TOKEN 或 GH_TOKEN，沿用已有 GitHub Stars 快照。");
+
+const projects = parsedProjects.map((project) => {
+  const github = project.githubRepository ? githubData.repositories.get(project.githubRepository.key) : null;
+  return {
+    ...project,
+    githubRepository: github?.nameWithOwner ?? project.githubRepository?.nameWithOwner ?? null,
+    githubUrl: github?.url ?? project.githubRepository?.url ?? null,
+    githubStars: github?.stars ?? null,
+  };
+});
 const sourceCommit = execFileSync("git", ["rev-parse", "HEAD"], {
   cwd: sourceRoot,
   encoding: "utf8",
@@ -195,6 +257,9 @@ const snapshot = {
     source: "1c7/chinese-independent-developer",
     sourceCommit,
     generatedAt: new Date().toISOString(),
+    githubStarsFetchedAt: githubData.fetchedAt,
+    githubRepositoriesDetected: detectedRepositories.length,
+    githubRepositoriesResolved: githubData.repositories.size,
     total: projects.length,
   },
   projects,

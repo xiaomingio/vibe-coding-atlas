@@ -30,3 +30,7 @@ GitHub Actions 每周一 10:15（北京时间）检查
 [chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支。上游 commit 发生变化时，工作流会重新生成并验证 `app/data/projects.json`，然后把新快照提交到 `main`。Cloudflare Pages 通过 GitHub Integration 检测该提交并自动构建发布。
 
 工作流也可以在 GitHub Actions 页面手动触发；它只使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要在 GitHub 配置 Cloudflare 凭据。
+
+## 部署
+
+Cloudflare Pages 项目 `vibe-coding-atlas-web` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`。GitHub 不保存 Cloudflare API Token 或 Account ID。

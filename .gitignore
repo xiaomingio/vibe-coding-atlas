@@ -3,6 +3,7 @@
 /node_modules/
 /dist/
 /source/
+/public/data/
 /.wrangler/
 /.vite/
 /.vinext/

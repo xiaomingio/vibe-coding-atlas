@@ -1,15 +1,21 @@
 /**
- * 文件说明: 验证项目快照完整性和静态站点构建产物。
+ * 文件说明: 验证项目数据接口代理和静态站点构建产物。
  */
 
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
+import { onRequest, projectsDataUrl } from "../functions/data/projects.json.js";
 
 const projectRoot = new URL("../", import.meta.url);
 
-test("项目快照包含全部版面和必要展示字段", async () => {
-  const snapshot = JSON.parse(await readFile(new URL("app/data/projects.json", projectRoot), "utf8"));
+test("生成的数据快照包含全部版面和必要展示字段", async (t) => {
+  if (!process.env.PROJECTS_SNAPSHOT_PATH) {
+    t.skip("未指定 PROJECTS_SNAPSHOT_PATH");
+    return;
+  }
+
+  const snapshot = JSON.parse(await readFile(process.env.PROJECTS_SNAPSHOT_PATH, "utf8"));
   const boards = new Set(snapshot.projects.map((project) => project.board));
 
   assert.equal(snapshot.meta.total, snapshot.projects.length);
@@ -20,6 +26,36 @@ test("项目快照包含全部版面和必要展示字段", async () => {
   assert.ok(snapshot.projects.some((project) => project.githubUrl && Number.isInteger(project.githubStars)));
   assert.ok(snapshot.projects.every((project) => project.githubStars === null || project.githubStars >= 0));
   assert.ok(snapshot.projects.every((project) => !project.githubUrl?.includes("/user-attachments/")));
+});
+
+test("项目数据接口从 data 分支代理 JSON 快照", async () => {
+  const originalFetch = globalThis.fetch;
+  const snapshot = { meta: { total: 1 }, projects: [{ name: "Vibe Coding Atlas" }] };
+  globalThis.fetch = async (url, init) => {
+    assert.equal(url, projectsDataUrl);
+    assert.equal(init.headers.accept, "application/json");
+    return new Response(JSON.stringify(snapshot), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+
+  try {
+    const response = await onRequest({ request: new Request("https://example.com/data/projects.json") });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
+    assert.equal(response.headers.get("x-data-source"), "github:data");
+    assert.deepEqual(await response.json(), snapshot);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("项目数据接口拒绝非读取请求", async () => {
+  const response = await onRequest({ request: new Request("https://example.com/data/projects.json", { method: "POST" }) });
+
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get("allow"), "GET, HEAD");
 });
 
 test("生产构建包含可直接托管的静态首页和资源", async () => {

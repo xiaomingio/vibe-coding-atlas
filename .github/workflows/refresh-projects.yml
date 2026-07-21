@@ -1,4 +1,4 @@
-# 文件说明: 每天同步上游项目清单，重新生成静态数据并提交有变化的快照。
+# 文件说明: 每天同步上游项目清单，重新生成静态数据并提交到 data 分支。
 # 参考资料: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#schedule
 
 name: Refresh project data
@@ -32,6 +32,13 @@ jobs:
           path: source
           fetch-depth: 1
 
+      - name: Check out atlas data branch
+        uses: actions/checkout@v5
+        with:
+          ref: data
+          path: data-branch
+          fetch-depth: 1
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
@@ -45,9 +52,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SOURCE_REPO: ${{ github.workspace }}/source
+          PROJECTS_OUTPUT_PATH: ${{ github.workspace }}/data-branch/projects.json
         run: npm run data:generate
 
       - name: Verify site
+        env:
+          PROJECTS_SNAPSHOT_PATH: ${{ github.workspace }}/data-branch/projects.json
         run: |
           npm run typecheck
           npm run lint
@@ -55,10 +65,11 @@ jobs:
 
       - name: Commit refreshed data
         shell: bash
+        working-directory: data-branch
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/data/projects.json
+          git add projects.json
           if git diff --cached --quiet; then
             exit 0
           fi

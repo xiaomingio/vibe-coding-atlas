@@ -1,6 +1,12 @@
-# Vibe Coding Atlas
+<p align="center">
+  <img src="public/favicon.svg" alt="Vibe Coding Atlas 品牌标识" width="128" height="128">
+</p>
 
-把 [chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的项目清单整理成可搜索、筛选、排序的静态网页目录，并展示精确收录日期和项目所附公开仓库的 GitHub Stars。
+<h1 align="center">Vibe Coding Atlas</h1>
+
+> 品牌标识结合了代码括号和双手捧着小火星的意象，寓意开发者用代码托起新的灵感与创意。
+
+收录和整理中国独立开发者项目，提供搜索、筛选、排序、精确收录日期和项目所附公开仓库的 GitHub Stars。数据来源：[chinese-independent-developer](https://github.com/1c7/chinese-independent-developer)。
 
 正式站点：<https://vibecoding.aicake.io>
 
@@ -14,6 +20,8 @@ npm run dev
 ```
 
 默认从项目内的 `source/` 读取上游清单，也可以通过 `SOURCE_REPO` 指定已有 checkout 路径。`npm run data:generate` 会把本地快照写入被忽略的 `public/data/projects.json`，方便 `npm run dev` 通过 `/data/projects.json` 加载。设置 `GITHUB_TOKEN` 或 `GH_TOKEN` 后会通过 GitHub 官方 API 刷新 Stars；没有 Token 时保留已有 Stars 快照。
+
+本机已登录 GitHub CLI 时，`npm run data:generate` 会在没有 `GITHUB_TOKEN` / `GH_TOKEN` 的情况下自动尝试 `gh auth token`，临时用于刷新 GitHub Stars。Token 不会写入项目文件；远程 GitHub Actions 仍使用自动注入的 `${{ github.token }}`。
 
 ## 验证与构建
 
@@ -50,3 +58,9 @@ flowchart TD
 ## 部署
 
 Cloudflare Pages 项目 `vibe-coding-atlas` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`，再由 Pages Function 提供同源 `/data/projects.json` 数据接口。GitHub 不保存 Cloudflare API Token 或 Account ID。
+
+## License
+
+项目代码采用 [GPL-3.0](./LICENSE) 开源。
+
+`Vibe Coding Atlas` 的名称、Logo 和域名不随代码授权。如果基于本项目 fork 或二次开发成自己的产品，请使用自己的名称、Logo 和域名，并注明项目来源，避免和本站混淆。

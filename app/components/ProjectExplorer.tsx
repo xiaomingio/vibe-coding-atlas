@@ -11,7 +11,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Database,
   ExternalLink,
   FilterX,
   GitFork,
@@ -19,10 +18,12 @@ import {
   Star,
 } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
+import { AtlasLogo } from "./AtlasLogo";
 import type { Project, ProjectSnapshot } from "../lib/projects";
 
 const PAGE_SIZE = 100;
 const sourceBase = "https://github.com/1c7/chinese-independent-developer/blob/master";
+const sourceCommitBase = "https://github.com/1c7/chinese-independent-developer/commit";
 
 type SortKey = "name" | "category" | "github-stars" | "status" | "added-at" | "board";
 type SortDirection = "ascending" | "descending";
@@ -101,13 +102,28 @@ function formatAddedAt(value: string) {
   return `${year} 年 ${month} 月 ${day} 日`;
 }
 
+function formatSnapshotTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "未知时间";
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(date);
+}
+
 export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("全部分类");
   const [status, setStatus] = useState("全部状态");
   const [board, setBoard] = useState("全部版面");
   const [year, setYear] = useState("全部年份");
-  const [sort, setSort] = useState<SortState>({ key: "github-stars", direction: "descending" });
+  const [sort, setSort] = useState<SortState>({ key: "added-at", direction: "descending" });
   const [page, setPage] = useState(1);
   const deferredQuery = useDeferredValue(query.trim().toLocaleLowerCase("zh-CN"));
 
@@ -146,6 +162,9 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
   const end = Math.min(currentPage * PAGE_SIZE, filtered.length);
   const githubProjectCount = snapshot.projects.filter((project) => project.githubUrl).length;
   const liveCount = snapshot.projects.filter((project) => project.status === "已上线").length;
+  const snapshotCommit = snapshot.meta.sourceCommit.slice(0, 7);
+  const snapshotCommitUrl = `${sourceCommitBase}/${snapshot.meta.sourceCommit}`;
+  const snapshotTime = formatSnapshotTime(snapshot.meta.generatedAt);
 
   function updateFilter(setter: (value: string) => void, value: string) {
     setter(value);
@@ -158,7 +177,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
     setStatus("全部状态");
     setBoard("全部版面");
     setYear("全部年份");
-    setSort({ key: "github-stars", direction: "descending" });
+    setSort({ key: "added-at", direction: "descending" });
     setPage(1);
   }
 
@@ -181,7 +200,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
     <main>
       <header className="site-header">
         <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true"><Database size={19} /></span>
+          <span className="brand-mark" aria-hidden="true"><AtlasLogo size={40} /></span>
           <span>Vibe Coding Atlas</span>
         </div>
         <a className="source-link" href="https://github.com/xiaomingio/vibe-coding-atlas" target="_blank" rel="noreferrer">
@@ -191,9 +210,23 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
 
       <section className="intro-band" aria-labelledby="page-title">
         <div className="intro-copy">
-          <p className="eyebrow">中国独立开发者项目目录</p>
-          <h1 id="page-title">Vibe Coding Atlas</h1>
-          <p>中国独立开发者项目列表网页版，基于 1c7/chinese-independent-developer 开源清单整理，支持搜索、筛选、排序，并每日刷新项目数据和公开 GitHub Stars。</p>
+          <p className="eyebrow">Vibe Coding Atlas</p>
+          <h1 id="page-title">中国独立开发者项目目录</h1>
+          <div className="intro-lines">
+            <p>收录和整理中国独立开发者项目，支持搜索、筛选、排序，并每日刷新项目数据和公开 GitHub Stars。</p>
+            <p>
+              数据来源：{" "}
+              <a href="https://github.com/1c7/chinese-independent-developer" target="_blank" rel="noreferrer">
+                1c7/chinese-independent-developer
+              </a>
+            </p>
+            <p>
+              刷新时间：{snapshotTime} ·{" "}
+              <a href={snapshotCommitUrl} target="_blank" rel="noreferrer" title="查看上游数据 commit">
+                {snapshotCommit}
+              </a>
+            </p>
+          </div>
         </div>
         <dl className="metrics" aria-label="项目概况">
           <div><dt>全部项目</dt><dd>{snapshot.meta.total.toLocaleString("zh-CN")}</dd></div>
@@ -204,14 +237,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
       </section>
 
       <section className="directory" aria-labelledby="directory-title">
-        <div className="directory-heading">
-          <div>
-            <h2 id="directory-title">项目目录</h2>
-            <p>默认按 GitHub Stars 从高到低排序。Stars 为每日快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
-          </div>
-          <span className="snapshot-note">数据快照 · {snapshot.meta.sourceCommit.slice(0, 7)}</span>
-        </div>
-
+        <h2 id="directory-title" className="sr-only">项目目录</h2>
         <div className="filter-panel" aria-label="筛选项目">
           <label className="search-field">
             <Search size={18} aria-hidden="true" />
@@ -311,9 +337,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
       </section>
 
       <footer>
-        <p>
-          项目资料来自 <a href="https://github.com/1c7/chinese-independent-developer" target="_blank" rel="noreferrer">chinese-independent-developer</a> 仓库；GitHub Stars 来自项目附带的公开仓库链接，数据以快照生成时间为准。
-        </p>
+        <p>GitHub Stars 来自项目附带的公开仓库链接，数据以快照生成时间为准。</p>
       </footer>
     </main>
   );

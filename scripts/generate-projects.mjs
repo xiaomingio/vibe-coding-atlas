@@ -15,7 +15,6 @@ const sourceRoot = process.env.SOURCE_REPO
 const outputPath = process.env.PROJECTS_OUTPUT_PATH
   ? resolve(process.env.PROJECTS_OUTPUT_PATH)
   : resolve(projectRoot, "public/data/projects.json");
-const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const githubSourceRepository = "1c7/chinese-independent-developer";
 
 const boards = [
@@ -91,6 +90,21 @@ function findGithubRepository(value) {
   return null;
 }
 
+function resolveGithubToken() {
+  if (process.env.GITHUB_TOKEN) return { token: process.env.GITHUB_TOKEN, source: "GITHUB_TOKEN" };
+  if (process.env.GH_TOKEN) return { token: process.env.GH_TOKEN, source: "GH_TOKEN" };
+
+  try {
+    const token = execFileSync("gh", ["auth", "token"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+    return token ? { token, source: "GitHub CLI" } : { token: "", source: "" };
+  } catch {
+    return { token: "", source: "" };
+  }
+}
+
 async function readExistingGithubData() {
   try {
     const existing = JSON.parse(await readFile(outputPath, "utf8"));
@@ -113,7 +127,7 @@ async function readExistingGithubData() {
   }
 }
 
-async function fetchGithubData(repositories) {
+async function fetchGithubData(repositories, githubToken) {
   const fetched = new Map();
   const batchSize = 50;
 
@@ -235,10 +249,15 @@ const detectedRepositories = [...new Map(
     .filter((project) => project.githubRepository)
     .map((project) => [project.githubRepository.key, project.githubRepository]),
 ).values()];
-const githubData = githubToken
-  ? await fetchGithubData(detectedRepositories)
+const githubAuth = resolveGithubToken();
+const githubData = githubAuth.token
+  ? await fetchGithubData(detectedRepositories, githubAuth.token)
   : await readExistingGithubData();
-if (!githubToken) console.warn("未提供 GITHUB_TOKEN 或 GH_TOKEN，沿用已有 GitHub Stars 快照。");
+if (githubAuth.token) {
+  console.warn(`使用 ${githubAuth.source} 刷新 GitHub Stars。`);
+} else {
+  console.warn("未提供 GITHUB_TOKEN / GH_TOKEN，且无法从 GitHub CLI 获取 token，沿用已有 GitHub Stars 快照。");
+}
 
 const projects = parsedProjects.map((project) => {
   const github = project.githubRepository ? githubData.repositories.get(project.githubRepository.key) : null;

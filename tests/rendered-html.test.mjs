@@ -79,7 +79,7 @@ test("生产构建包含可直接托管的静态首页和资源", async () => {
   ]);
 
   assert.match(html, /<html lang="zh-CN">/i);
-  assert.match(html, /<title>Vibe Coding Atlas｜中国独立开发者项目列表网页版<\/title>/);
+  assert.match(html, /<title>Vibe Coding Atlas｜中国独立开发者项目目录<\/title>/);
   assert.match(html, /<link rel="canonical" href="https:\/\/vibecoding\.aicake\.io\/"/);
   assert.match(html, /src="https:\/\/stats\.aicake\.io\/script\.js"/);
   assert.match(html, /data-website-id="0acd301b-dc5b-4728-bd79-1a110f3746af"/);
@@ -89,7 +89,7 @@ test("生产构建包含可直接托管的静态首页和资源", async () => {
   assert.match(html, /id="root"/);
   assert.match(robots, /Sitemap: https:\/\/vibecoding\.aicake\.io\/sitemap\.xml/);
   assert.match(sitemap, /<loc>https:\/\/vibecoding\.aicake\.io\/<\/loc>/);
-  assert.match(llms, /Vibe Coding Atlas 是中国独立开发者项目列表网页版/);
+  assert.match(llms, /Vibe Coding Atlas 是中国独立开发者项目目录/);
   assert.match(llms, /https:\/\/vibecoding\.aicake\.io\/data\/projects\.json/);
   assert.ok(assets.some((name) => name.endsWith(".js")));
   assert.ok(assets.some((name) => name.endsWith(".css")));

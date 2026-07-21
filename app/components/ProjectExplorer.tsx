@@ -207,7 +207,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         <div className="directory-heading">
           <div>
             <h2 id="directory-title">项目目录</h2>
-            <p>默认按 GitHub Stars 从高到低排序。数据来源于 1c7/chinese-independent-developer，Stars 为每日快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
+            <p>默认按 GitHub Stars 从高到低排序。Stars 为每日快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
           </div>
           <span className="snapshot-note">数据快照 · {snapshot.meta.sourceCommit.slice(0, 7)}</span>
         </div>

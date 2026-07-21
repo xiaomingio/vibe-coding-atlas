@@ -26,7 +26,7 @@ npm test
 
 ## 自动更新
 
-GitHub Actions 每周一 10:15（北京时间）检查
+GitHub Actions 每天凌晨 4:00（北京时间）检查
 [chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支，重新生成项目资料并刷新 GitHub Stars。快照有变化时提交到 `main`，Cloudflare Pages 通过 GitHub Integration 检测提交并自动构建发布。
 
 工作流也可以在 GitHub Actions 页面手动触发；它只使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要在 GitHub 配置 Cloudflare 凭据。

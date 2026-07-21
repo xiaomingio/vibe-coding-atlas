@@ -642,6 +642,18 @@ footer p {
   margin-bottom: 0;
 }
 
+footer a {
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 @media (max-width: 1220px) {
   .intro-band {
     grid-template-columns: 1fr;

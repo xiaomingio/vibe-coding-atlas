@@ -6,7 +6,6 @@
 
 import {
   ArrowDown,
-  ArrowUpRight,
   ArrowUp,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +14,7 @@ import {
   Database,
   ExternalLink,
   FilterX,
+  GitFork,
   Search,
   Star,
 } from "lucide-react";
@@ -184,8 +184,8 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
           <span className="brand-mark" aria-hidden="true"><Database size={19} /></span>
           <span>Vibe Coding Atlas</span>
         </div>
-        <a className="source-link" href="https://github.com/1c7/chinese-independent-developer" target="_blank" rel="noreferrer">
-          数据来源 <ArrowUpRight size={15} aria-hidden="true" />
+        <a className="source-link" href="https://github.com/xiaomingio/vibe-coding-atlas" target="_blank" rel="noreferrer">
+          <GitFork size={15} aria-hidden="true" /> GitHub
         </a>
       </header>
 
@@ -311,7 +311,9 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
       </section>
 
       <footer>
-        <p>项目资料来自 chinese-independent-developer 仓库；GitHub Stars 来自项目附带的公开仓库链接，数据以快照生成时间为准。</p>
+        <p>
+          项目资料来自 <a href="https://github.com/1c7/chinese-independent-developer" target="_blank" rel="noreferrer">chinese-independent-developer</a> 仓库；GitHub Stars 来自项目附带的公开仓库链接，数据以快照生成时间为准。
+        </p>
       </footer>
     </main>
   );

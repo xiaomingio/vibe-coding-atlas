@@ -1,11 +1,11 @@
-# 文件说明: 每周同步上游项目清单，重新生成静态数据并提交有变化的快照。
+# 文件说明: 每天同步上游项目清单，重新生成静态数据并提交有变化的快照。
 # 参考资料: https://docs.github.com/actions/using-workflows/events-that-trigger-workflows#schedule
 
 name: Refresh project data
 
 on:
   schedule:
-    - cron: "15 2 * * 1"
+    - cron: "0 20 * * *"
   workflow_dispatch:
 
 permissions:

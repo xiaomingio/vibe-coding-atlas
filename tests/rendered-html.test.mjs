@@ -70,8 +70,9 @@ test("robots.txt 接口显式返回抓取规则", async () => {
 });
 
 test("生产构建包含可直接托管的静态首页和资源", async () => {
-  const [html, robots, sitemap, llms, assets] = await Promise.all([
+  const [html, notFound, robots, sitemap, llms, assets] = await Promise.all([
     readFile(new URL("dist/index.html", projectRoot), "utf8"),
+    readFile(new URL("dist/404.html", projectRoot), "utf8"),
     readFile(new URL("dist/robots.txt", projectRoot), "utf8"),
     readFile(new URL("dist/sitemap.xml", projectRoot), "utf8"),
     readFile(new URL("dist/llms.txt", projectRoot), "utf8"),
@@ -87,6 +88,8 @@ test("生产构建包含可直接托管的静态首页和资源", async () => {
   assert.match(html, /1c7\/chinese-independent-developer/);
   assert.match(html, /项目数据每日刷新/);
   assert.match(html, /id="root"/);
+  assert.match(notFound, /页面未找到/);
+  assert.doesNotMatch(notFound, /\/assets\//);
   assert.match(robots, /Sitemap: https:\/\/vibecoding\.aicake\.io\/sitemap\.xml/);
   assert.match(sitemap, /<loc>https:\/\/vibecoding\.aicake\.io\/<\/loc>/);
   assert.match(llms, /Vibe Coding Atlas 是中国独立开发者项目目录/);

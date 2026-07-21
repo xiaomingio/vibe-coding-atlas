@@ -193,7 +193,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         <div className="intro-copy">
           <p className="eyebrow">中国独立开发者项目目录</p>
           <h1 id="page-title">Vibe Coding Atlas</h1>
-          <p>完整收录主版面、程序员、游戏和历史归档项目，提供分类、收录日期和公开 GitHub Stars 供检索与比较。</p>
+          <p>中国独立开发者项目列表网页版，基于 1c7/chinese-independent-developer 开源清单整理，支持搜索、筛选、排序，并每日刷新项目数据和公开 GitHub Stars。</p>
         </div>
         <dl className="metrics" aria-label="项目概况">
           <div><dt>全部项目</dt><dd>{snapshot.meta.total.toLocaleString("zh-CN")}</dd></div>
@@ -207,7 +207,7 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
         <div className="directory-heading">
           <div>
             <h2 id="directory-title">项目目录</h2>
-            <p>默认按 GitHub Stars 从高到低排序。Stars 为数据快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
+            <p>默认按 GitHub Stars 从高到低排序。数据来源于 1c7/chinese-independent-developer，Stars 为每日快照生成时的公开数量，没有附带仓库链接的项目显示为“—”。</p>
           </div>
           <span className="snapshot-note">数据快照 · {snapshot.meta.sourceCommit.slice(0, 7)}</span>
         </div>

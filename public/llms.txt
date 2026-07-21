@@ -1,0 +1,29 @@
+# Vibe Coding Atlas
+
+Vibe Coding Atlas 是中国独立开发者项目列表网页版。
+
+正式入口：https://vibecoding.aicake.io/
+
+数据来源：https://github.com/1c7/chinese-independent-developer
+
+网站源码：https://github.com/xiaomingio/vibe-coding-atlas
+
+项目数据：https://vibecoding.aicake.io/data/projects.json
+
+站点地图：https://vibecoding.aicake.io/sitemap.xml
+
+## 内容范围
+
+本网站把 1c7/chinese-independent-developer 的 Markdown 清单整理成可搜索、筛选、排序的网页目录，覆盖主版面、程序员版面、游戏版面和历史归档项目。
+
+数据字段包括项目名称、链接、作者、状态、分类、版面、收录日期、原始来源位置，以及能够从公开链接识别出的 GitHub 仓库和 Stars。
+
+## 更新频率
+
+项目数据由 GitHub Actions 每天 04:00（北京时间）刷新一次，并写入本项目的 data 分支。网页通过同源接口 /data/projects.json 读取最新快照。
+
+## 使用边界
+
+项目介绍、状态和链接以原始开源清单为基础整理。GitHub Stars 是快照生成时公开仓库的数量，不代表实时数据，也不覆盖没有公开 GitHub 仓库链接的项目。
+
+本站使用基础访问统计了解页面访问量，不收集登录信息、邮箱、密钥或用户提交内容。

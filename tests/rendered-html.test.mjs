@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 import { onRequest, projectsDataUrl } from "../functions/data/projects.json.js";
+import { onRequest as onRobotsRequest } from "../functions/robots.txt.js";
 
 const projectRoot = new URL("../", import.meta.url);
 
@@ -56,6 +57,16 @@ test("项目数据接口拒绝非读取请求", async () => {
 
   assert.equal(response.status, 405);
   assert.equal(response.headers.get("allow"), "GET, HEAD");
+});
+
+test("robots.txt 接口显式返回抓取规则", async () => {
+  const response = await onRobotsRequest({ request: new Request("https://example.com/robots.txt") });
+  const body = await response.text();
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
+  assert.match(body, /^User-agent: \*/);
+  assert.match(body, /Sitemap: https:\/\/vibecoding\.aicake\.io\/sitemap\.xml/);
 });
 
 test("生产构建包含可直接托管的静态首页和资源", async () => {

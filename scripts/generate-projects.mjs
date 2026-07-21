@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const sourceRoot = process.env.SOURCE_REPO
   ? resolve(process.env.SOURCE_REPO)
-  : resolve(projectRoot, "../third_party/chinese-independent-developer");
+  : resolve(projectRoot, "source");
 const outputPath = resolve(projectRoot, "app/data/projects.json");
 const githubToken = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const githubSourceRepository = "1c7/chinese-independent-developer";

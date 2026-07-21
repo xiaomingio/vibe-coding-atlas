@@ -8,11 +8,12 @@
 
 ```bash
 npm install
+git clone --depth=1 https://github.com/1c7/chinese-independent-developer.git source
 npm run data:generate
 npm run dev
 ```
 
-默认从相邻的 `../third_party/chinese-independent-developer` 读取数据，也可以通过 `SOURCE_REPO` 指定仓库路径。设置 `GITHUB_TOKEN` 或 `GH_TOKEN` 后会通过 GitHub 官方 API 刷新 Stars；没有 Token 时保留已有 Stars 快照。
+默认从项目内的 `source/` 读取上游清单，也可以通过 `SOURCE_REPO` 指定已有 checkout 路径。设置 `GITHUB_TOKEN` 或 `GH_TOKEN` 后会通过 GitHub 官方 API 刷新 Stars；没有 Token 时保留已有 Stars 快照。
 
 ## 验证与构建
 

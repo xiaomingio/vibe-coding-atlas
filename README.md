@@ -36,28 +36,56 @@ npm test
 ## 自动更新
 
 GitHub Actions 每天凌晨 4:00（北京时间）检查
-[chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支，重新生成项目资料并刷新 GitHub Stars。快照有变化时提交到 `data` 分支的 `projects.json`，`main` 分支只保存网站代码。
+[chinese-independent-developer](https://github.com/1c7/chinese-independent-developer) 的 `master` 分支，重新生成项目资料并刷新 GitHub Stars。验证通过后，工作流把 `projects.json` 上传到 Cloudflare R2，网页运行时通过 `/data/projects.json` 读取最新快照。
 
-工作流也可以在 GitHub Actions 页面手动触发；它只使用 GitHub 自动提供的 `GITHUB_TOKEN`，不需要在 GitHub 配置 Cloudflare 凭据。
+工作流也可以在 GitHub Actions 页面手动触发。GitHub Stars 使用 GitHub 自动提供的 `${{ github.token }}`；上传 R2 需要在本仓库配置 `CLOUDFLARE_ACCOUNT_ID`、`R2_BUCKET`、`R2_ACCESS_KEY_ID` 和 `R2_SECRET_ACCESS_KEY` 四个 GitHub Actions Secrets。
 
 ## 运行流程
 
+数据刷新和浏览器访问是两条独立链路：
+
 ```mermaid
-flowchart TD
+flowchart LR
   upstream["1c7/chinese-independent-developer master"] --> action["GitHub Actions 每天 04:00 北京时间刷新"]
   action --> generate["运行 npm run data:generate"]
-  generate --> dataBranch["提交 projects.json 到 data 分支"]
-  mainBranch["main 分支保存网页代码"] --> pages["Cloudflare Pages 构建 dist"]
-  pages --> browser["用户访问 vibecoding.aicake.io"]
-  browser --> endpoint["请求 /data/projects.json"]
-  endpoint --> function["Pages Function 读取 GitHub data 分支"]
-  function --> dataBranch
-  dataBranch --> browser
+  generate --> verify["typecheck / lint / test"]
+  verify --> r2Upload["上传 data/projects.json 到 Cloudflare R2"]
+```
+
+```mermaid
+flowchart LR
+  browser["浏览器"] --> pages["Cloudflare Pages 静态资源"]
+  pages --> app["HTML / JS / CSS"]
+  browser --> dataPath["/data/projects.json"]
+  dataPath --> r2["Cloudflare R2 项目快照"]
 ```
 
 ## 部署
 
-Cloudflare Pages 项目 `vibe-coding-atlas` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`，再由 Pages Function 提供同源 `/data/projects.json` 数据接口。GitHub 不保存 Cloudflare API Token 或 Account ID。
+Cloudflare Pages 项目 `vibe-coding-atlas` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`。项目数据托管在 Cloudflare R2 bucket，推荐给 R2 绑定自定义域名，并在 Cloudflare 规则中把 `https://vibecoding.aicake.io/data/projects.json` 路由到 R2 对象，避免经过 Pages Functions / Workers。
+
+### Cloudflare 凭据
+
+R2 上传使用 R2 S3-compatible API token，而不是 Wrangler 的 OAuth token 或账号级 Cloudflare API Token。推荐创建只绑定 `vibe-coding-atlas-data` bucket 的 **Object Read & Write** token，并把生成的 S3 凭据写入本地 `.env.cloudflare`：
+
+```dotenv
+CLOUDFLARE_ACCOUNT_ID=你的 Cloudflare Account ID
+R2_BUCKET=vibe-coding-atlas-data
+R2_ACCESS_KEY_ID=R2 Access Key ID
+R2_SECRET_ACCESS_KEY=R2 Secret Access Key
+```
+
+可以在 Cloudflare R2 的 **Manage R2 API Tokens** 页面手动创建同等权限的 token，也可以使用本机已有的安全凭据流程在仓库外创建；项目只要求最终把上面的四个变量填入本地 `.env.cloudflare`。本机已登录 GitHub CLI 后，把这些值写入当前 GitHub 仓库的 Actions Secrets：
+
+```bash
+npm run secrets:github
+```
+
+如果不在仓库目录执行，显式指定目标仓库：
+
+```bash
+npm run secrets:github -- --repo xiaomingio/vibe-coding-atlas
+```
 
 ## License
 

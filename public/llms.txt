@@ -20,7 +20,7 @@ Vibe Coding Atlas 是中国独立开发者项目目录。
 
 ## 更新频率
 
-项目数据由 GitHub Actions 每天 04:00（北京时间）刷新一次，并写入本项目的 data 分支。网页通过同源接口 /data/projects.json 读取最新快照。
+项目数据由 GitHub Actions 每天 04:00（北京时间）刷新一次，并上传到 Cloudflare R2。网页通过 /data/projects.json 读取最新快照。
 
 ## 使用边界
 

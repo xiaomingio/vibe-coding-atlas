@@ -1,12 +1,10 @@
 /**
- * 文件说明: 验证项目数据接口代理和静态站点构建产物。
+ * 文件说明: 验证项目数据快照和静态站点构建产物。
  */
 
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
-import { onRequest, projectsDataUrl } from "../functions/data/projects.json.js";
-import { onRequest as onRobotsRequest } from "../functions/robots.txt.js";
 
 const projectRoot = new URL("../", import.meta.url);
 
@@ -29,42 +27,9 @@ test("生成的数据快照包含全部版面和必要展示字段", async (t) =
   assert.ok(snapshot.projects.every((project) => !project.githubUrl?.includes("/user-attachments/")));
 });
 
-test("项目数据接口从 data 分支代理 JSON 快照", async () => {
-  const originalFetch = globalThis.fetch;
-  const snapshot = { meta: { total: 1 }, projects: [{ name: "Vibe Coding Atlas" }] };
-  globalThis.fetch = async (url, init) => {
-    assert.equal(url, projectsDataUrl);
-    assert.equal(init.headers.accept, "application/json");
-    return new Response(JSON.stringify(snapshot), {
-      status: 200,
-      headers: { "content-type": "application/json" },
-    });
-  };
+test("静态 robots.txt 包含抓取规则", async () => {
+  const body = await readFile(new URL("public/robots.txt", projectRoot), "utf8");
 
-  try {
-    const response = await onRequest({ request: new Request("https://example.com/data/projects.json") });
-    assert.equal(response.status, 200);
-    assert.equal(response.headers.get("content-type"), "application/json; charset=utf-8");
-    assert.equal(response.headers.get("x-data-source"), "github:data");
-    assert.deepEqual(await response.json(), snapshot);
-  } finally {
-    globalThis.fetch = originalFetch;
-  }
-});
-
-test("项目数据接口拒绝非读取请求", async () => {
-  const response = await onRequest({ request: new Request("https://example.com/data/projects.json", { method: "POST" }) });
-
-  assert.equal(response.status, 405);
-  assert.equal(response.headers.get("allow"), "GET, HEAD");
-});
-
-test("robots.txt 接口显式返回抓取规则", async () => {
-  const response = await onRobotsRequest({ request: new Request("https://example.com/robots.txt") });
-  const body = await response.text();
-
-  assert.equal(response.status, 200);
-  assert.equal(response.headers.get("content-type"), "text/plain; charset=utf-8");
   assert.match(body, /^User-agent: \*/);
   assert.match(body, /Sitemap: https:\/\/vibecoding\.aicake\.io\/sitemap\.xml/);
 });

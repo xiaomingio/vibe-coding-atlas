@@ -161,9 +161,12 @@ async function fetchGithubData(repositories, githubToken) {
       }
     }
     if (!payload) throw new Error(`GitHub API 请求失败：${lastError?.message ?? "未知错误"}`);
-    if (!payload?.data || payload.errors?.length) {
+    if (!payload?.data) {
       const message = payload.errors?.map((error) => error.message).join("；") || "未返回数据";
       throw new Error(`GitHub API 请求失败：${message}`);
+    }
+    if (payload.errors?.length) {
+      console.warn(`GitHub API 返回 ${payload.errors.length} 个仓库解析警告，本批次继续处理：${payload.errors.map((error) => error.message).join("；")}`);
     }
     batch.forEach((repository, index) => {
       const result = payload.data[`repo${index}`];

@@ -4,7 +4,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,10 +18,10 @@ const outputPath = process.env.PROJECTS_OUTPUT_PATH
 const githubSourceRepository = "1c7/chinese-independent-developer";
 
 const boards = [
-  { file: "README.md", name: "主版面" },
-  { file: "pages/README-Programmer-Edition.md", name: "程序员" },
-  { file: "pages/README-Game.md", name: "游戏" },
-  { file: "pages/README-2018-2020.md", name: "历史归档" },
+  { files: ["README.md"], name: "主版面" },
+  { files: [".github/pages/README-Programmer-Edition.md", "pages/README-Programmer-Edition.md"], name: "程序员" },
+  { files: [".github/pages/README-Game.md", "pages/README-Game.md"], name: "游戏" },
+  { files: [".github/pages/README-Archive.md", "pages/README-2018-2020.md"], name: "历史归档" },
 ];
 
 const statusNames = {
@@ -150,6 +150,7 @@ async function fetchGithubData(repositories, githubToken) {
             "user-agent": "vibe-coding-atlas-data-generator",
           },
           body: JSON.stringify({ query }),
+          signal: AbortSignal.timeout(30_000),
         });
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         payload = await response.json();
@@ -160,7 +161,7 @@ async function fetchGithubData(repositories, githubToken) {
       }
     }
     if (!payload) throw new Error(`GitHub API 请求失败：${lastError?.message ?? "未知错误"}`);
-    if (!payload.data) {
+    if (!payload?.data || payload.errors?.length) {
       const message = payload.errors?.map((error) => error.message).join("；") || "未返回数据";
       throw new Error(`GitHub API 请求失败：${message}`);
     }
@@ -197,8 +198,21 @@ function parseProjectLine(body) {
   };
 }
 
+async function resolveBoardFile(board) {
+  for (const file of board.files) {
+    try {
+      await access(resolve(sourceRoot, file));
+      return file;
+    } catch {
+      // Try the next known upstream layout.
+    }
+  }
+  throw new Error(`版面“${board.name}”文件不存在。已检查：${board.files.join("、")}；来源目录：${sourceRoot}`);
+}
+
 async function parseBoard(board) {
-  const markdown = await readFile(resolve(sourceRoot, board.file), "utf8");
+  const file = await resolveBoardFile(board);
+  const markdown = await readFile(resolve(sourceRoot, file), "utf8");
   const lines = markdown.split(/\r?\n/);
   const projects = [];
   let author = "未注明";
@@ -223,7 +237,7 @@ async function parseBoard(board) {
 
     const parsed = parseProjectLine(entry[2]);
     const project = {
-      id: `${board.file}:${index + 1}`,
+      id: `${file}:${index + 1}`,
       name: parsed.name || "未命名项目",
       url: parsed.url,
       description: parsed.description || "暂无介绍",
@@ -233,17 +247,28 @@ async function parseBoard(board) {
       status: statusNames[entry[1]],
       board: board.name,
       category: classify(parsed.name, parsed.description, board.name),
-      sourceFile: board.file,
+      sourceFile: file,
       sourceLine: index + 1,
       githubRepository: parsed.githubRepository ?? authorGithubRepository,
     };
     projects.push(project);
   });
 
+  if (projects.length === 0) {
+    throw new Error(`版面“${board.name}”文件 ${file} 未解析出任何项目，拒绝生成快照。`);
+  }
   return projects;
 }
 
-const parsedProjects = (await Promise.all(boards.map(parseBoard))).flat();
+if (!sourceRoot) throw new Error("SOURCE_REPO 未配置。");
+
+let parsedByBoard;
+try {
+  parsedByBoard = await Promise.all(boards.map(parseBoard));
+} catch (error) {
+  throw new Error(`读取上游项目清单失败：${error instanceof Error ? error.message : String(error)}`, { cause: error });
+}
+const parsedProjects = parsedByBoard.flat();
 const detectedRepositories = [...new Map(
   parsedProjects
     .filter((project) => project.githubRepository)
@@ -287,5 +312,12 @@ const snapshot = {
 };
 
 await mkdir(dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+const temporaryOutputPath = `${outputPath}.tmp-${process.pid}`;
+try {
+  await writeFile(temporaryOutputPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+  await rename(temporaryOutputPath, outputPath);
+} catch (error) {
+  await unlink(temporaryOutputPath).catch(() => {});
+  throw new Error(`写入项目快照失败：${error instanceof Error ? error.message : String(error)}`, { cause: error });
+}
 console.log(`Generated ${projects.length} projects from ${sourceCommit.slice(0, 7)}.`);

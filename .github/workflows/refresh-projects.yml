@@ -52,6 +52,7 @@ jobs:
         env:
           PROJECTS_SNAPSHOT_PATH: ${{ runner.temp }}/projects.json
         run: |
+          set -Eeuo pipefail
           npm run typecheck
           npm run lint
           npm test
@@ -63,11 +64,16 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           AWS_EC2_METADATA_DISABLED: "true"
+          AWS_RETRY_MODE: standard
+          AWS_MAX_ATTEMPTS: "3"
         run: |
+          set -Eeuo pipefail
           : "${CLOUDFLARE_ACCOUNT_ID:?CLOUDFLARE_ACCOUNT_ID secret is required}"
           : "${R2_BUCKET:?R2_BUCKET secret is required}"
           : "${AWS_ACCESS_KEY_ID:?R2_ACCESS_KEY_ID secret is required}"
           : "${AWS_SECRET_ACCESS_KEY:?R2_SECRET_ACCESS_KEY secret is required}"
+          test -s "${{ runner.temp }}/projects.json"
+          node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' "${{ runner.temp }}/projects.json"
           aws --version
           aws s3 cp "${{ runner.temp }}/projects.json" "s3://$R2_BUCKET/data/projects.json" \
             --endpoint-url "https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com" \

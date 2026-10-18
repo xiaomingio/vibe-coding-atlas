@@ -64,28 +64,32 @@ flowchart LR
 
 Cloudflare Pages 项目 `vibe-coding-atlas` 通过 GitHub Integration 跟踪 `main` 分支，使用 `npm run build` 构建并发布 `dist/`。项目数据托管在 Cloudflare R2 bucket，推荐给 R2 绑定自定义域名，并在 Cloudflare 规则中把 `https://vibecoding.aicake.io/data/projects.json` 路由到 R2 对象，避免经过 Pages Functions / Workers。
 
-### Cloudflare 凭据
+### 发布配置
 
-R2 上传使用 R2 S3-compatible API token，而不是 Wrangler 的 OAuth token 或账号级 Cloudflare API Token。推荐创建只绑定 `vibe-coding-atlas-data` bucket 的 **Object Read & Write** token，并把生成的 S3 凭据写入本地 `.env.cloudflare`：
+复制 `.env.deploy.example` 为 `.env.deploy.production`，填写 Pages 发布 token、账号 ID、项目名 `vibe-coding-atlas`、生产分支 `main` 和 R2 上传凭据。真实 env 文件仅保留在本机，并设置为仅当前用户可读写：
 
-```dotenv
-CLOUDFLARE_ACCOUNT_ID=你的 Cloudflare Account ID
-R2_BUCKET=vibe-coding-atlas-data
-R2_ACCESS_KEY_ID=R2 Access Key ID
-R2_SECRET_ACCESS_KEY=R2 Secret Access Key
+```bash
+cp .env.deploy.example .env.deploy.production
+chmod 600 .env.deploy.production
 ```
 
-可以在 Cloudflare R2 的 **Manage R2 API Tokens** 页面手动创建同等权限的 token，也可以使用本机已有的安全凭据流程在仓库外创建；项目只要求最终把上面的四个变量填入本地 `.env.cloudflare`。本机已登录 GitHub CLI 后，把这些值写入当前 GitHub 仓库的 Actions Secrets：
+`CLOUDFLARE_API_TOKEN` 使用账号级 **Pages Write** 权限；R2 使用只绑定 `vibe-coding-atlas-data` bucket 的 **Object Read & Write** S3 凭据。两类凭据分别用于页面发布和数据上传。
+
+本机登录 GitHub CLI 后，运行以下命令，将 R2 所需的四个变量同步到当前仓库的 Actions Secrets：
 
 ```bash
 npm run secrets:github
 ```
 
-如果不在仓库目录执行，显式指定目标仓库：
+脚本只同步上文列出的四个 R2 变量；进程环境变量优先于文件值。可以通过 `--repo owner/name` 指定仓库，通过 `--env-file <path>` 指定部署配置文件。
+
+验证通过后，本地构建并发布到 Pages：
 
 ```bash
-npm run secrets:github -- --repo xiaomingio/vibe-coding-atlas
+npm run deploy
 ```
+
+发布脚本在构建完成后加载 `.env.deploy.production`，使用项目安装的 Wrangler 上传 `dist/`。生产应用配置使用 `.env.production`；公开站点配置由代码维护。
 
 ## License
 

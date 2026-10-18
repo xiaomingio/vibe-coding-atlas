@@ -21,7 +21,7 @@ const boards = [
   { files: ["README.md"], name: "主版面" },
   { files: [".github/pages/README-Programmer-Edition.md", "pages/README-Programmer-Edition.md"], name: "程序员" },
   { files: [".github/pages/README-Game.md", "pages/README-Game.md"], name: "游戏" },
-  { files: [".github/pages/README-Archive.md", "pages/README-2018-2020.md"], name: "历史归档" },
+  { files: [".github/pages/README-Earlier-Projects.md"], name: "历史归档" },
 ];
 
 const statusNames = {

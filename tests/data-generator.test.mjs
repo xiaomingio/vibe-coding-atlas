@@ -18,7 +18,7 @@ async function createSource(root, includeProgrammer = true) {
   const entry = "* :white_check_mark: [项目](https://example.com) - 示例项目\n";
   await writeFile(join(root, "README.md"), entry);
   await writeFile(join(root, ".github/pages/README-Game.md"), entry);
-  await writeFile(join(root, ".github/pages/README-Archive.md"), entry);
+  await writeFile(join(root, ".github/pages/README-Earlier-Projects.md"), entry);
   if (includeProgrammer) {
     await writeFile(join(root, ".github/pages/README-Programmer-Edition.md"), entry);
   }

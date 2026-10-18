@@ -12,4 +12,5 @@
 .env
 .env.*
 !.env.example
+!.env.deploy.example
 npm-debug.log*

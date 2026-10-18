@@ -40,23 +40,46 @@ function plainText(value) {
     .trim();
 }
 
-function classify(name, description, board) {
-  const text = `${name} ${description}`.toLowerCase();
-  const matches = (pattern) => pattern.test(text);
+// 分类以产品用途为依据；首句和名称比后续功能、技术栈与推广说明权重更高。
+const categoryRules = [
+  { category: "教育学习", pattern: /太阳系|天文|行星|科普|汉字|字形|字典|课堂|教学|教育|学习(?:平台|网站|工具|应用|助手|资源|英语|日语)|(?:英语|日语|语言|单词|词汇|口语|语法|五十音).{0,6}(?:学习|练习|跟读|训练)|跟读|背单词|背诵|题库|考试|雅思|课程|教材|绘本|\b(?:jlpt|ielts|flashcards?)\b/i },
+  { category: "数据金融", pattern: /记账|账本|账单|分账|财务|财报|会计|股票|炒股|证券|基金|理财|定投|投资(?:分析|顾问|组合|标的|机会)|投资者|创投|量化|回测|汇率|加密货币|数字货币|退休|\b(?:tradingview|stock|stocks|etf|finance|beancount|fire)\b/i },
+  { category: "生活健康", pattern: /健康(?:档案|应用|管理|提醒|急救)|家庭健康|康复|慰问|热量|医疗|病历|体检|化验|医保|用药|心理|情感|依恋|睡眠|饮食|食谱|健身|减脂|减肥|体重|卡路里|正念|宠物(?:陪伴|档案|管家)|育儿|宝宝|旅行(?:规划|攻略)|旅游|菜谱|\b(?:hiit|tabata)\b/i },
+  { category: "营销电商", pattern: /电商|卖家|商品(?:图|文案|详情|管理)|店铺|网店|独立站|外贸|跨境(?:电商|卖家|选品)|选品|获客|营销|广告(?:投放|管理|制作|素材|创意|平台)|广告变体|视频广告|投放广告|社媒(?:运营|账号|管理)|社交媒体(?:管理|运营|营销)|小红书(?:运营|合规)|小红书合规运营|搜索引擎优化|\b(?:etsy|shopify|seo|listing|listings|crm)\b/i },
+  { category: "开发者工具", pattern: /代码(?:编辑|审查|审计|生成|搜索|分析|托管)|编程|编码|程序员|开发(?:工具|框架|环境|平台|助手|套件)|开发者(?:工具|平台|服务)|接口(?:调试|测试|管理)|API\s*(?:网关|调试|测试|管理|服务)|数据库|对象存储|云存储客户端|服务器|反向代理|终端|命令行工具|部署(?:工具|平台|服务)|日志(?:分析|查看)|进程(?:管理|清理)|插件.{0,8}(?:管理器|质量评分)|技能市场|(?:Agent|MCP|SDK).{0,8}(?:开发|调试|管理|市场)|llms\.txt|\b(?:ide|devops|docker|kubernetes|git|npm|regex|regexp)\b|Claude Code|Codex|Cursor|DeepSeek Harness|GitHub\s*(?:星标|仓库|Stars)|(?:Python|JavaScript|TypeScript|Golang|Rust|Java).{0,6}(?:库|框架|编程|SDK|开发|工具)/i },
+  { category: "效率办公", pattern: /家务|打卡|习惯管理|笔记|知识库|知识图谱|待办|任务管理|计划管理|日程|日历|写作|稿子|改写|润色|简历|小说(?:创作|作家)|(?:Markdown|文本|文档)\s*编辑器|文档.{0,4}翻译|文档(?:编辑|管理)|翻译(?:工具|助手)|剪贴板|输入法|语音输入|语音转文字|转写|听写|转录|录音转文字|邮件管理|会议(?:记录|纪要)|思维导图|流程图|白板|项目管理|协作|工作流|自动化|窗口(?:布局|管理)|桌面(?:[（(][^）)]*[）)])?\s*(?:布局|空间|窗口|管理)|轻量桌面浏览器|标签页|文件(?:查看|管理|整理)|电子书|阅读器|伴读|\b(?:todo|markdown|obsidian|typora|epub|productivity)\b/i },
+  { category: "影音创作", pattern: /视频|音频|音乐|歌曲|说唱|歌词|字幕|配音|播客|录屏|剪辑|直播|听书|音效|\b(?:video|audio|music|podcast|youtube|bilibili|mp4|mp3)\b/i },
+  { category: "设计图片", pattern: /截图|拼豆|像素画|绘图|图片|图像|照片|摄影|修图|海报|图标|绘画|插画|示意图|图层|画笔|矢量|壁纸|精灵图|游戏资产|姿势|建模|网格.{0,6}(?:修复|检查)|字体|配色|设计(?:工具|素材|资源)|\b(?:image|images|photo|photos|logo|svg|figma|photoshop|psd|stl|3mf)\b/i },
+  { category: "游戏娱乐", pattern: /游戏|谜题|棋牌|塔防|数独|推箱子|俄罗斯方块|手柄|抽卡|占星|星盘|星座|角色测试|粉丝测试|民俗娱乐|\b(?:game|games|gaming|steam|roblox|rogue|clicker|gamepad)\b/i },
+  { category: "内容社区", pattern: /社区|论坛|博客|资讯|新闻|导航|目录|榜单|聚合|情报站|资源(?:站|库)|资料(?:站|库|整理站)|书籍|专题导读|冷知识|社交(?:平台|网络|资料)|\b(?:directory|directories|news|forum|community|newsletter)\b/i },
+  { category: "实用工具", pattern: /转换|压缩|计算器|计时器|下载|二维码|工具箱|查询|检测|测试工具|生成器|文本行处理|排序行|地址生成|屏幕|显示器|帧率|内存优化|\b(?:converter|calculator|tester)\b/i },
+];
 
-  if (board === "游戏" || matches(/游戏|game|steam|roblox|谜题|猜词|塔防|rogue|棋牌|clicker/i)) return "游戏娱乐";
-  if (matches(/开发者|程序员|github|api|sdk|cli|代码|编程|部署|数据库|框架|开源|server|terminal|devops|docker|kubernetes/i)) return "开发者工具";
-  if (matches(/etsy|shopify|电商|卖家|商品|listing|独立站|外贸|跨境|订单|店铺/i)) return "营销电商";
-  if (matches(/seo|营销|广告|获客|社交媒体|受众|newsletter|邮件营销|内容营销|流量/i)) return "营销电商";
-  if (matches(/教育|学习|课程|单词|英语|日语|雅思|课堂|题库|练习|考试|背诵|语言/i)) return "教育学习";
-  if (matches(/股票|交易|量化|基金|金融|投资|加密货币|tradingview|记账|汇率/i)) return "数据金融";
-  if (matches(/视频|音频|音乐|字幕|配音|播客|短剧|直播|video|audio|music|youtube|bilibili/i)) return "影音创作";
-  if (matches(/图片|图像|照片|摄影|设计|海报|图标|绘画|image|photo|logo|svg|字体|配色/i)) return "设计图片";
-  if (matches(/笔记|知识|待办|日程|写作|markdown|工作流|自动化|表单|协作|项目管理|效率|剪贴板|时间管理/i)) return "效率办公";
-  if (matches(/健康|医疗|心理|情感|睡眠|饮食|健身|医院|药|体重|关系测试/i)) return "生活健康";
-  if (matches(/社区|论坛|博客|资讯|新闻|导航|目录|榜单|聚合|搜索|社交|聊天/i)) return "内容社区";
-  if (matches(/ai|gpt|claude|gemini|grok|大模型|提示词|agent|智能体|生成/i)) return "AI 应用";
-  if (matches(/转换|压缩|计算器|下载|二维码|格式|工具箱|查询|检测|生成器|converter|calculator|downloader/i)) return "实用工具";
+function classify(name, description, board) {
+  // 外链与“无广告”等运营说明不代表产品用途。
+  const clean = (value) => value.replace(/https?:\/\/[^\s]+/gi, " ")
+    .replace(/(?:无|没有|不含|去除|屏蔽)广告/g, " ");
+  const title = clean(name);
+  const body = clean(description);
+  const primary = body.split(/[，,；;。\n]/, 1)[0];
+  const purpose = body.split(/另有|另带|另外|另提供|附带|还带/, 1)[0];
+  let category = null;
+  let bestScore = 0;
+  for (const rule of categoryRules) {
+    // 输入照片不等于图片产品；明确的生成结果比输入材料更能说明用途。
+    const outputScore = rule.category === "影音创作"
+      && /(?:生成|合成|制作|输出|转为|转成)[^，,；;。]{0,40}(?:视频|音频|音乐|歌曲|MP4)|(?:文案|文字|图片|照片|文本)转(?:视频|音频)|(?:视频|音频|音乐|配音)(?:生成|制作|创作|编辑|工作台)/i.test(purpose) ? 12 : 0;
+    const score = outputScore + (rule.pattern.test(primary) ? (rule.category === "营销电商" ? 20 : 8) : 0)
+      + (rule.pattern.test(title) ? 5 : 0)
+      + (rule.pattern.test(body) ? 2 : 0);
+    if (score > bestScore) {
+      category = rule.category;
+      bestScore = score;
+    }
+  }
+  if (category) return category;
+  if (board === "游戏") return "游戏娱乐";
+  if (/人工智能|大模型|智能体|提示词|\b(?:ai|gpt|chatgpt|claude|gemini|grok|agent|agents|llm)\b/i.test(`${title} ${body}`)) return "AI 应用";
   return "其他";
 }
 

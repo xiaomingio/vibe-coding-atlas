@@ -33,6 +33,8 @@ npm test
 
 `npm run build` 生成可直接发布到 Cloudflare Pages 的 `dist/`。项目资料来自上游仓库，GitHub Stars 仅对应清单中能够识别出的公开仓库链接。
 
+分类规则维护在 `scripts/generate-projects.mjs`，按产品主要用途匹配；名称与介绍首句优先，图片转视频按产出用途区分，AI 与上游版面用于补充识别。规则变更后通过生成命令更新快照。
+
 ## 自动更新
 
 GitHub Actions 每天凌晨 4:00（北京时间）检查

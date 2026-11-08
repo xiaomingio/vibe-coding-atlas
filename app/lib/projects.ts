@@ -10,6 +10,7 @@ export type Project = {
   url: string;
   description: string;
   author: string;
+  authorGithubUrl: string | null;
   year: number | null;
   addedAt: string;
   status: ProjectStatus;

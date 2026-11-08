@@ -242,6 +242,7 @@ async function parseBoard(board) {
   const lines = markdown.split(/\r?\n/);
   const projects = [];
   let author = "未注明";
+  let authorGithubUrl = null;
   let authorGithubRepository = null;
   let year = null;
   let addedAt = "未注明";
@@ -255,6 +256,8 @@ async function parseBoard(board) {
     }
     if (/^####\s+/.test(line)) {
       author = plainText(line.replace(/^####\s+/, "").replace(/\s+-\s+.*$/, "")) || "未注明";
+      const profile = line.match(/\[[^\]]+\]\((https:\/\/(?:www\.)?github\.com\/[\w-]+\/?)\)/i);
+      authorGithubUrl = profile?.[1] ?? null;
       authorGithubRepository = findGithubRepository(line);
       return;
     }
@@ -268,6 +271,7 @@ async function parseBoard(board) {
       url: parsed.url,
       description: parsed.description || "暂无介绍",
       author,
+      authorGithubUrl,
       year,
       addedAt,
       status: statusNames[entry[1]],

@@ -20,6 +20,7 @@ import {
 import { useDeferredValue, useMemo, useState } from "react";
 import { AtlasLogo } from "./AtlasLogo";
 import type { Project, ProjectSnapshot } from "../lib/projects";
+import { matchesProjectQuery } from "../lib/project-search";
 
 const PAGE_SIZE = 100;
 const sourceBase = "https://github.com/1c7/chinese-independent-developer/blob/master";
@@ -142,9 +143,8 @@ export function ProjectExplorer({ snapshot }: { snapshot: ProjectSnapshot }) {
 
   const filtered = useMemo(() => {
     const result = snapshot.projects.filter((project) => {
-      const searchText = `${project.name} ${project.description} ${project.author}`.toLocaleLowerCase("zh-CN");
       return (
-        (!deferredQuery || searchText.includes(deferredQuery)) &&
+        matchesProjectQuery(project, deferredQuery) &&
         (category === "全部分类" || project.category === category) &&
         (status === "全部状态" || project.status === status) &&
         (board === "全部版面" || project.board === board) &&

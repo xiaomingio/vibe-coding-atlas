@@ -1,5 +1,5 @@
 /*
- * 文件说明: 验证上游版面路径变更和生成失败时的退出行为。
+ * 文件说明: 验证上游版面解析、作者主页、用途分类及生成失败时的退出行为。
  */
 
 import assert from "node:assert/strict";
@@ -39,6 +39,35 @@ test("生成器识别上游迁移到 .github/pages 的版面文件", async () =>
     });
     const snapshot = JSON.parse(await readFile(output, "utf8"));
     assert.deepEqual([...new Set(snapshot.projects.map((project) => project.board))].sort(), ["主版面", "历史归档", "游戏", "程序员"].sort());
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("程序员版保留项目与作者主页，并在切换作者时重置主页", async () => {
+  const root = await mkdtemp(join(tmpdir(), "atlas-authors-"));
+  try {
+    const output = join(root, "projects.json");
+    await createSource(root);
+    await writeFile(join(root, ".github/pages/README-Programmer-Edition.md"), [
+      "### 2026 年 11 月 8 号添加",
+      "#### 小明 - [Github](https://github.com/xiaomingio)",
+      "* :white_check_mark: [Neat MD](https://example.com/neat-md)：VS Code Markdown 编辑器",
+      "* :white_check_mark: [Neat CSV](https://example.com/neat-csv)：CSV 编辑器",
+      "#### 另一位作者",
+      "* :white_check_mark: [其他项目](https://example.com/other)：示例项目",
+    ].join("\n"));
+    await execFileAsync(process.execPath, [generator.pathname], {
+      env: { ...process.env, SOURCE_REPO: root, PROJECTS_OUTPUT_PATH: output, GITHUB_TOKEN: "", GH_TOKEN: "" },
+    });
+    const snapshot = JSON.parse(await readFile(output, "utf8"));
+    const projects = snapshot.projects.filter((project) => project.board === "程序员");
+    assert.deepEqual(projects.map(({ name, author, authorGithubUrl, addedAt }) =>
+      ({ name, author, authorGithubUrl, addedAt })), [
+      { name: "Neat MD", author: "小明", authorGithubUrl: "https://github.com/xiaomingio", addedAt: "2026-11-08" },
+      { name: "Neat CSV", author: "小明", authorGithubUrl: "https://github.com/xiaomingio", addedAt: "2026-11-08" },
+      { name: "其他项目", author: "另一位作者", authorGithubUrl: null, addedAt: "2026-11-08" },
+    ]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
